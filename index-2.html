@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="https://d3js.org/d3.v5.min.js"></script>
+
+</head>
+<style>
+	.button {
+		height: 50px;
+		width: 90px;
+		font-size: 22px;
+		border-radius: 12px;
+		border: 4px solid #4EB1B8;
+
+	}
+
+	.button:hover {
+		background-color: #4EB1B8;
+		color: white;
+	}
+  
+  	.block {
+  		margin-top: 1em;
+  		margin-bottom: 1em;
+  	}
+
+</style>
+
+
+<body style="background-color: orange">
+	<div style="text-align: center">
+
+		<title>Arduino Project</title>
+
+		<h1 style="font-size: 50px">Welcome to our Arduino Project!</h1>
+		<p style="font-style: italic; font-size:27px; color:#1F618D "> by Sanjana Prakash, Olivia Sun, and Christina Chen</p>
+
+
+		<!-- press begin button to get all the data-->
+		<button id="begin" class="button" onclick="getTemp()">Update</button>
+
+
+		<!-- display the current, low, high, avg temps -->
+		<div style="font-size:35px; color:white;" id="displayTemps">
+			<p style="color: black;">The current temperature is:
+				<td colspan="4">
+					<input id="currTempDisplay" name="currTempDisplay" disabled>
+				</td>
+			</p>
+			<p style="color: black;">The lowest temperature recorded is:
+				<td colspan="4">
+					<input id="lowTempDisplay" name="lowTempDisplay" disabled>
+				</td>
+			</p>
+			<p style="color: black;">The highest temperature recorded is:
+				<td colspan="4">
+					<input id="highTempDisplay" name="highTempDisplay" disabled>
+				</td>
+			</p>
+			<p style="color: black;">The average temperature is:
+				<td colspan="4">
+					<input id="avgTempDisplay" name="avgTempDisplay" disabled>
+				</td>
+			</p>
+		</div>
+
+
+		<!-- user chooses how to display the temp in the browser -->
+		<div id="display_browser_temp">
+			<form style="background-color:#4EB1B8; font-size:35px;">
+				<p style="color: white;">How do you want to display the temperature (C or F)?</p>
+				<input type="radio" id="changeCel" name="group1" value="CTemp" onclick="changeTempToC()" /> Celsius
+				<br/>
+				<input type="radio" id="changeFah" name="group1" value="FTemp" onclick="changeTempToF()" /> Fahrenheit
+				<br>
+			</form>
+		</div>
+
+
+		<!-- user chooses how to display the temp in the arduino -->
+		<div id="display_arduino_temp">
+			<form method="post" style="background-color:#4EB1B8; font-size:35px;">
+				<p style="color: white; ">How should the Arduino display the temperature (C or F)?</p>
+				<input type="radio" id="arduino_cel" name="group2" value="CTemp"> Celsius
+				<br>
+				<input type="radio" id="arduino_fah" name="group2" value="FTemp"> Fahrenheit
+				<br>
+				<input type="submit" id="submitDisplay" value="submit">
+			</form>
+		</div>
+
+
+		<!-- user chooses whether to put on standby (hide data) or resume -->
+		<div id="standby_or_resume">
+			<form method="post" style="background-color:#4EB1B8; font-size:35px;">
+				<p style="color: white; ">Do you want to put the sensor on stand-by?</p>
+				<input type="radio" id="stand_by_yes" name="group3" value="standBy"> Stand-by
+				<br>
+				<input type="radio" id="resume" name="group3" value="resume"> Resume
+				<br>
+				<input type="submit" id="submitStandBy" value="submit">
+			</form>
+		</div>
+
+
+		<!-- user chooses whether to put on standby (hide data) or resume -->
+		<div id="changeRGB">
+			<form method="post" style="background-color:#4EB1B8; font-size:35px;">
+				<p style="color: white; ">What color do you want to change the RGB to?</p>
+				<input type="radio" id="red" name="group4" value="red"> Red
+				<br>
+				<input type="radio" id="blue" name="group4" value="blue"> Blue
+				<br>
+				<input type="radio" id="green" name="group4" value="green"> Green
+				<br>
+				<input type="submit" id="submitColor" value="submit">
+			</form>
+		</div>
+
+
+		<!-- add two numbers together and then send to arduino to display -->
+		<div id="Addition">
+			<form method="post" id="additionForm" style="background-color:#4EB1B8; font-size:35px;">
+				<p style="color: white; ">What two numbers (0 to 9999) do you want to add?</p>
+				<input id="number1" type="number" min="0" max="9999">
+				<br>
+				<p> + </p>
+				<input id="number2" type="number" min="0" max="9999">
+				<br>
+				<button type="button" id="calculate">calculate</button>
+				<br>
+				<!--<input type="sumDisplay" id="displaySum" placeholder="0" readonly>-->
+				<td colspan="4">
+					<input id="sumDisplay" name="DisplaySum" disabled>
+				</td>
+				<br>
+				<!--<input type="submit" name="sumUp" id="submit" onclick="sumUp()"> -->
+				<input type="submit" name="sumUp" onclick="sumUp()">
+			</form>
+		</div>
+
+		<!-- click the button to display the line graph -->
+		<div class="block" id="graph" style="background-color:#4EB1B8; font-size:35px;">
+          <div>
+			<button id="Graph" onclick="makeGraph()">make the graph!</button>
+          </div>
+			<svg id="visualisation" width="800" height="400" style="background: white"></svg>
+		</div>
+
+
+	</div>
+
+
+
+
+	<script>
+
+		var number1 = 0;
+		var number2 = 0;
+		var inStandBy = false;
+		var tempInCelsius = true;
+		var currTemp;
+		var lowTemp;
+		var highTemp;
+		var avgTemp;
+		var sum;
+		var arrayOfTemp = [currTemp, lowTemp, highTemp, avgTemp];
+		var displayArduinoIn = 'cel';
+
+
+		//calculate the sum
+		$("#calculate").click(function () {
+			var firstNumber = $('#number1').val();
+			var secondNumber = $('#number2').val();
+			sum = parseInt(firstNumber) + parseInt(secondNumber);
+			$('#sumDisplay').val(sum);
+		})
+      
+        //send sum to server
+      	$("#additionForm").submit(function (event) {
+      		event.preventDefault(); //this prevents the page from refreshing
+      		alert(sum);
+      		$.get("addition_endpoint", {sum: sum}); //this will make a get request to something like: http://localhost:3001/addition_endpoint?sum=###
+      	})
+
+		//display the current, avg, low, and high temps
+		function getTemp() {
+			alert('we get the message');
+			tempInCelsius = true;
+			$.getJSON('http://localhost:3001/begin=update', function (data, status) {
+				if (parseInt(data.currentReading) == -100) {
+					alert("Error: Device is disconnected!");
+				} else {
+					$('#lowTempDisplay').val(data.low);
+					$('#highTempDisplay').val(data.high);
+					$('#currTempDisplay').val(data.currentReading);
+					$('#avgTempDisplay').val(data.avg);
+					currTemp = parseFloat(data.currentReading);
+					lowTemp = parseFloat(data.low);
+					highTemp = parseFloat(data.high);
+					avgTemp = parseFloat(data.avg);
+				}
+			});
+		}
+
+		//changes temp from C to F 
+		function changeTempToF() {
+			if (tempInCelsius == true) {
+
+				var currTempDisplay = document.getElementById('currTempDisplay');
+				var lowTempDisplay = document.getElementById('lowTempDisplay');
+				var highTempDisplay = document.getElementById('highTempDisplay');
+				var avgTempDisplay = document.getElementById('avgTempDisplay');
+
+				currTemp = convertToF(currTemp).toFixed(2);
+				currTempDisplay.value = currTemp;
+
+				lowTemp = convertToF(lowTemp).toFixed(2);
+				lowTempDisplay.value = lowTemp;
+
+				highTemp = convertToF(highTemp).toFixed(2);
+				highTempDisplay.value = highTemp;
+
+				avgTemp = convertToF(avgTemp).toFixed(2);
+				avgTempDisplay.value = avgTemp;
+
+				tempInCelsius = false;
+			}
+		}
+		//changes temp from F to C 
+		function changeTempToC() {
+			if (tempInCelsius == false) {
+
+				var currTempDisplay = document.getElementById('currTempDisplay');
+				var lowTempDisplay = document.getElementById('lowTempDisplay');
+				var highTempDisplay = document.getElementById('highTempDisplay');
+				var avgTempDisplay = document.getElementById('avgTempDisplay');
+
+				currTemp = convertToC(currTemp).toFixed(2);
+				currTempDisplay.value = currTemp;
+
+				lowTemp = convertToC(lowTemp).toFixed(2);
+				lowTempDisplay.value = lowTemp;
+
+				highTemp = convertToC(highTemp).toFixed(2);
+				highTempDisplay.value = highTemp;
+
+				avgTemp = convertToC(avgTemp).toFixed(2);
+				avgTempDisplay.value = avgTemp;
+
+				tempInCelsius = true;
+
+			}
+
+		}
+
+		//does conversions
+		function convertToF(num) {
+			var numInF = num * (9 / 5) + 32;
+			return numInF;
+		}
+		function convertToC(num) {
+			var numInC = (num - 32) * (5 / 9);
+			return numInC;
+		}
+
+
+		//put on stand-by (hide the data) or resume (show data)
+		$("#stand_by_yes").click(function () {
+			$("#currTempDisplay").css("visibility", "hidden");
+			$("#lowTempDisplay").css("visibility", "hidden");
+			$("#highTempDisplay").css("visibility", "hidden");
+			$("#avgTempDisplay").css("visibility", "hidden");
+		});
+		$("#resume").click(function () {
+			$("#currTempDisplay").css("visibility", "visible");
+			$("#lowTempDisplay").css("visibility", "visible");
+			$("#highTempDisplay").css("visibility", "visible");
+			$("#avgTempDisplay").css("visibility", "visible");
+		})
+
+		//make and display the line graph 
+		function makeGraph() {
+			alert('we get the message');
+			$.getJSON('http://localhost:3001/begin=draw', function (data, status) {
+				var number1 = parseFloat(data.reading1);
+				var number2 = parseFloat(data.reading2);
+				var number3 = parseFloat(data.reading3);
+				var number4 = parseFloat(data.reading4);
+				var number5 = parseFloat(data.reading5);
+				var number6 = parseFloat(data.reading6);
+				var number7 = parseFloat(data.reading7);
+				var number8 = parseFloat(data.reading8);
+				var number9 = parseFloat(data.reading9);
+				var number10 = parseFloat(data.reading10);
+
+				var graphData = [
+					{ x: 1, y: number1 },
+					{ x: 2, y: number2 },
+					{ x: 3, y: number3 },
+					{ x: 4, y: number4 },
+					{ x: 5, y: number5 },
+					{ x: 6, y: number6 },
+					{ x: 7, y: number7 },
+					{ x: 8, y: number8 },
+					{ x: 9, y: number9 },
+					{ x: 10, y: number10 }
+				]
+
+				drawGraph(graphData)
+
+			})
+		}
+
+		//draws the graph with all the data
+		function drawGraph(graphData) {
+			var vis = d3.select("#visualisation"),
+				WIDTH = 800,
+				HEIGHT = 400,
+				MARGINS = {
+					top: 25,
+					right: 25,
+					bottom: 25,
+					left: 60
+				},
+				xRange = d3.scaleLinear().range([MARGINS.left, WIDTH - MARGINS.right]).domain([d3.min(graphData, function (d) 
+				{
+					return d.x;
+				}),
+				d3.max(graphData, function (d) {
+					return d.x;
+				})
+				]),
+
+				yRange = d3.scaleLinear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([d3.min(graphData, function (d) 
+				{
+					return d.y;
+				}),
+				d3.max(graphData, function (d) {
+					return d.y;
+				})
+				]),
+
+				xAxis = d3.axisBottom()
+					.scale(xRange)
+					.tickSize(7),
+
+				yAxis = d3.axisLeft()
+					.scale(yRange)
+					.tickSize(10);
+
+      		vis.selectAll("*").remove()
+
+			vis.append("svg:g")
+				.attr("class", "x axis")
+				.attr("transform", "translate(0," + (HEIGHT - MARGINS.bottom) + ")")
+				.call(xAxis);
+
+			vis.append("svg:g")
+				.attr("class", "y axis")
+				.attr("transform", "translate(" + (MARGINS.left) + ",0)")
+				.call(yAxis);
+
+			var lineFunc = d3.line()
+				.x(function (d) {
+					return xRange(d.x);
+				})
+				.y(function (d) {
+					return yRange(d.y);
+				});
+
+			vis.append("svg:path")
+				.attr("d", lineFunc(graphData))
+				.attr("stroke", "purple")
+				.attr("stroke-width", 4)
+				.attr("fill", "none");
+
+		}
+
+
+	</script>
+
+</body>
+
+</html>
